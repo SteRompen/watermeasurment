@@ -1,71 +1,95 @@
 // Parameters
-String _measurementId;
+int _measurementId;
 int _deviceId;
 String _dateTime;
 float _distanceToSurface;
 float _formerDistanceToSurface;
-float _waterheight;
 double _flowSpeed;
-bool _flood;
-
+boolean _flood = false;
+long duration;
+int timeDelay = 5000; // to set interval
 
 // Arduino setup
-int flowPin = 2;    //This is the input pin on the Arduino
+const int flowPin = 2;   
+const int trigPin = 8;
+const int echoPin = 9;
 volatile int count; //This integer needs to be set as volatile to ensure it updates correctly during the interrupt process.
-//int timeDelay = 5000;
-
 
 // To run once:
-void setup() {
+void setup() 
+{
   pinMode(flowPin, INPUT);            //Sets the pin as an input
   attachInterrupt(0, Flow, RISING);   //Configures interrupt 0 (pin 2 on the Arduino Uno) to run the function "Flow"
+  pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
+  pinMode(echoPin, INPUT); // Sets the echoPin as an Inp
   Serial.begin(9600);                 //Start Serial
 }
-
 
 // To run repeatedly
 void loop() 
 {
   delay(5000);
+
   GetFlowSpeed();
   GetWaterheight(); 
-  // Prints to display the values (CRTL+SHIF+'M')
-  count = 0;
-  Serial.println("Current flow speed: ");
-  Serial.println(_flowSpeed);           
-  Serial.println("Current height: ");
-  Serial.println(_waterheight);
+  CalculateFlood(_distanceToSurface);
+  count = 0;   
+
+  // Print in serial monitor
+  Serial.println();
+  Serial.print("flowSpeed: ");           
+  Serial.println(_flowSpeed); 
+  Serial.print("distance: ");          
+  Serial.println(_distanceToSurface);
+  Serial.print("flood: ");
+  Serial.println(_flood);
 }
 
-
 // To calculate the current waterheight
-int GetWaterheight()
+void GetWaterheight()
 {
-  _waterheight = random(100,200);
-  return _waterheight;
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  // Reads the echoPin, returns the sound wave travel time in microseconds
+  duration = pulseIn(echoPin, HIGH);
+  // Calculating the distance
+  _distanceToSurface = duration * 0.034 / 2;
+  return _distanceToSurface;
 }
 
 
 // To measure the current flowspeed
-double GetFlowSpeed()
+void GetFlowSpeed()
 {
-  // Calculate/convert datat to L per minture
   _flowSpeed = (count * 2.25);         
   _flowSpeed = _flowSpeed * 60;         
-  _flowSpeed = _flowSpeed / 1000;     
-  //_flowSpeed = 111;  
+  _flowSpeed = _flowSpeed / 1000;       
   return _flowSpeed; 
+}
+
+// To check or there is a flood at this moment
+void CalculateFlood(float currentHeight)
+{
+  // lijst bouwen met daarin max 3 elementen, hierop gemiddelde berekene
+  // en deze de uitslag van de bool laten bepalen. 
+  float avg = currentHeight;
+
+  if(avg<5)
+  {
+    _flood = true;
+  }
+  else
+  {
+    _flood = false;
+  }
+  return _flood;
 }
 
 
 void Flow()
 {
    count++; //Every time this function is called, increment "count" by 1
-}
-
-
-// To check or there is a flood at this moment
-void CalculateFlood()
-{
-  // als het gemiddelde van de vorige en de huidige meting hoger is dan de hoogte van X, dan is het een overstroming 
-}
+}f
